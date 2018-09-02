@@ -1,0 +1,630 @@
+<html ng-app="behaveHTMLReportsApp">
+
+<head>
+
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=0.1, shrink-to-fit=no">
+
+	<title> qrs App</title>
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.2/angular.min.js"></script>
+	<script>
+		// load a main module explicitly
+
+        (function(){
+            var app = angular.module("behaveHTMLReportsApp",[]);
+        })();
+
+        (function () {
+            var app = angular.module("behaveHTMLReportsApp");
+            app.controller("behaveHTMLReportsController", ["$http",function ($http) {
+                var self = this;
+				self.features = []
+				self.scenarois = []
+				self.steps = []
+
+				self.featuresLoading = true;
+				self.scenariosLoading = true;
+				self.stepsLoading = true;
+
+				self.passCount = 0
+				self.failCount = 0
+				self.skipCount = 0
+				self.calculateCounts = (feature) => {
+					self.passCount = 0
+					self.failCount = 0
+					self.skipCount = 0
+					feature.elements.forEach((scenario) => {
+						if(scenario.status == "passed"){
+							self.passCount++;
+						}
+						else if(scenario.status == "failed"){
+							self.failCount++;
+						}
+						else {
+							self.skipCount++;
+						}
+					});
+				}
+
+				self.stepChanged = (step) => {
+					self.activeStep = step;
+				}
+
+				self.loadSteps = (scenario) => {
+					self.stepsLoading = true;
+					self.steps = scenario.steps;
+					if(self.steps.length > 0){
+						self.activeStep = self.steps[0]
+					}
+					self.stepsLoading=false;
+				}
+            	
+
+				self.scenarioChanged = (scenario) => {
+					self.activeScenario = scenario;
+					self.loadSteps(scenario);
+				}
+
+				self.loadScenarios = (feature) => {
+					self.scenariosLoading = true;
+					self.calculateCounts(feature);
+					self.scenarios = feature.elements;
+					if(self.scenarios.length > 0){
+						self.activeScenario = self.scenarios[0]
+						self.loadSteps(self.scenarios[0])
+					}
+					self.scenariosLoading = false;
+				}
+                
+
+				self.featureChanged = (feature) => {
+					self.activeFeature = feature;
+					self.loadScenarios(feature);
+				}
+				
+				$http.get("test-results/result.json")
+                    .then( (response) => {
+                    console.log(response.data)
+                        self.features = response.data;
+                        self.featuresLoading = false;
+                        if(self.features.length>0){
+                            self.activeFeature = self.features[0];
+                            self.loadScenarios(self.activeFeature);
+                        }
+                    });
+
+
+                self.msToHMS = ( ms ) => {
+                    // 1- Convert to seconds:
+                    var seconds = parseInt(ms / 1000);
+                    // 2- Extract hours:
+                    var hours = parseInt( seconds / 3600 ); // 3,600 seconds in 1 hour
+                    seconds = seconds % 3600; // seconds remaining after extracting hours
+                    // 3- Extract minutes:
+                    var minutes = parseInt( seconds / 60 ); // 60 seconds in 1 minute
+                    // 4- Keep only seconds not extracted to minutes:
+                    seconds = seconds % 60;
+
+                    var timeStamp = "";
+                    timeStamp += (hours>0)?hours+"h ":"";
+                    timeStamp += (minutes>0)?minutes+"m ":"";
+                    timeStamp += seconds+"s";
+                    return timeStamp;
+                    //return ( hours+"h "+minutes+"m "+seconds+ "s ");
+                }
+            }]);
+        })();
+	</script>
+	<script src="https://getbootstrap.com/docs/4.1/assets/js/vendor/popper.min.js"></script>
+	<script src="https://getbootstrap.com/docs/4.1/dist/js/bootstrap.min.js"></script>
+
+
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://getbootstrap.com/docs/4.1/dist/css/bootstrap.min.css">
+
+	<style>
+		body {
+			font-size: .7rem;
+		}
+
+		.feather {
+			width: 16px;
+			height: 16px;
+			vertical-align: text-bottom;
+		}
+		/*
+		* Sidebar
+		*/
+
+		.sidebar {
+			position: fixed;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			z-index: 100;
+			/* Behind the navbar */
+			padding: 20px 0 0;
+			/* Height of navbar */
+			box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+		}
+
+		.sidebar-sticky {
+			position: relative;
+			top: 0;
+			height: calc(100vh - 48px);
+			padding-top: .5rem;
+			overflow-x: hidden;
+			overflow-y: auto;
+			/* Scrollable contents if viewport is shorter than content. */
+		}
+		/*
+		@supports ((position: -webkit-sticky) or (position: sticky)) {
+		.sidebar-sticky {
+			position: -webkit-sticky;
+			position: sticky;
+		}
+		}*/
+
+		.sidebar .nav-link {
+			font-weight: 500;
+			color: #333;
+		}
+
+		.sidebar .nav-link .feather {
+			margin-right: 4px;
+			color: #999;
+		}
+
+		.sidebar .nav-link.active {
+			color: #007bff;
+		}
+
+		.sidebar .nav-link:hover .feather,
+		.sidebar .nav-link.active .feather {
+			color: inherit;
+		}
+
+		.sidebar-heading {
+			font-size: .7rem;
+			text-transform: uppercase;
+		}
+		/*
+		* Content
+		*/
+
+		[role="main"] {
+			padding-top: 48px;
+			/* Space for fixed navbar */
+		}
+		/*
+		* Navbar
+		*/
+
+		.navbar-brand {
+			padding-top: .5rem;
+			padding-bottom: .5rem;
+			font-size: .72rem;
+			background-color: rgba(0, 0, 0, .25);
+			box-shadow: inset -1px 0 0 rgba(0, 0, 0, .25);
+		}
+
+		.navbar .form-control {
+			padding: .4rem .4rem;
+			border-width: 0;
+			border-radius: 0;
+		}
+
+		.form-control-dark {
+			color: #fff;
+			background-color: rgba(255, 255, 255, .1);
+			border-color: rgba(255, 255, 255, .1);
+		}
+
+		.form-control-dark:focus {
+			border-color: transparent;
+			box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
+		}
+		/*
+		* Utilities
+		*/
+
+		.border-top {
+			border-top: 1px solid #e5e5e5;
+		}
+
+		.border-bottom {
+			border-bottom: 1px solid #e5e5e5;
+		}
+		/* width */
+
+		::-webkit-scrollbar {
+			width: 5px;
+		}
+		/* Track */
+
+		::-webkit-scrollbar-track {
+			background: #f1f1f1;
+		}
+		/* Handle */
+
+		::-webkit-scrollbar-thumb {
+			border-radius: 5px;
+			background: #888;
+		}
+		/* Handle on hover */
+
+		::-webkit-scrollbar-thumb:hover {
+			background: #555;
+		}
+
+		.container-fluid>div {
+			display: block;
+			padding-top: 30px;
+			align-items: center;
+		}
+
+		.column {
+			display: inline-block;
+			box-shadow: 1px 1px 1px 1px grey;
+		}
+
+		.overflow-ellipsis {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.white-box {
+			background-color: #fff;
+			padding: 2px 4px 1px 4px;
+			margin-bottom: .1rem;
+			display: block;
+		}
+
+		.white-box:hover {
+			background-color: #efefef;
+			padding: 2px 4px 1px 4px;
+			margin-bottom: .1rem;
+			display: block;
+		}
+
+		.grey-box {
+			background-color: #f8f9fa;
+			padding: 2px 4px 1px 4px;
+			margin-bottom: .1rem;
+			display: block;
+		}
+
+		.grey-box:hover {
+			background-color: #efefef;
+			padding: 2px 4px 1px 4px;
+			margin-bottom: .1rem;
+			display: block;
+		}
+
+		.bg-grey {
+			/*background-color:#ccc;*/
+			background-color: #495057;
+		}
+
+		.failed {
+			/*border-left:7px solid #990000;*/
+			border-left: 7px solid #A2000C;
+		}
+
+		.passed {
+			border-left: 7px solid #008800;
+		}
+
+		.unknown {
+			border-left: 7px solid #f71;
+		}
+
+		a:hover {
+			text-decoration: none;
+		}
+
+		.text-black {
+			color: #333;
+		}
+
+		.keyword-purple {
+			color: #662399;
+		}
+
+		.keyword-yellow {
+			color: #ffa502;
+		}
+
+		.keyword-blue {
+			color: #0056b3;
+		}
+
+		.keyword-grey {
+			color: #555;
+		}
+
+		.keyword-red {
+			color: #f12;
+		}
+
+		.step-pass {
+			background-color: green;
+		}
+
+		.step-fail {
+			background-color: red;
+		}
+
+		.step-notrun {
+			background-color: yellow;
+		}
+
+		.spinner {
+			color: #777;
+			text-align: center;
+		}
+
+		.dot {
+			height: 10px;
+			width: 10px;
+			border-radius: 5px;
+			box-shadow: 1px 1px 1px 1px #222;
+		}
+
+		.green {
+			background-color: #008800;
+		}
+
+		.orange {
+			background-color: #f71;
+		}
+
+		.red {
+			background-color: #aa0000;
+		}
+
+		.text-green {
+			color: #008800;
+		}
+
+		.text-orange {
+			color: #f71;
+		}
+
+		.text-red {
+			color: #aa0000;
+		}
+
+		.text-blue {
+			color: #007bff;
+		}
+
+		.text-black {
+			color: #222;
+		}
+
+		.selected {
+			border-right: 7px solid #222;
+			border-top: 1px solid #222;
+			border-bottom: 1px solid #222;
+			background-color: #ddd;
+			/*border-right: 7px solid #007bff;
+			border-top: 1px solid #007bff;
+			border-bottom: 1px solid #007bff;
+			background-color: #ddd;*/
+		}
+
+		.selected-red {
+			border-right: 7px solid #aa0000;
+			border-top: 1px solid #aa0000;
+			border-bottom: 1px solid #aa0000;
+			background-color: #ddd;
+		}
+
+		.selected-orange {
+			border-right: 7px solid #f71;
+			border-top: 1px solid #f71;
+			border-bottom: 1px solid #f71;
+			background-color: #ddd;
+		}
+
+		.selected-green {
+			border-right: 7px solid #008800;
+			border-top: 1px solid #008800;
+			border-bottom: 1px solid #008800;
+			background-color: #ddd;
+		}
+
+		.screnshot-img {
+			position: sticky;
+			width: auto;
+			height: 80%;
+			border: 1px solid #ccc;
+			margin-top:70px;
+		}
+
+		.backdrop {
+			z-index:9998;
+			background-color:rgba(0,0,0,0.3);
+			width:100%;height:100%;
+			position:absolute;
+			top:0;
+			left:0;
+			text-align:center;
+		}
+	</style>
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+</head>
+
+<body ng-controller="behaveHTMLReportsController as ctrl">
+
+	<nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+		<a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#">Behave Reports</a>
+		<div class="col-md-2 navbar-brand pt-0 pb-0" style="text-align:center;position:sticky;top:-1px">
+			<div class="summurry-dots pt-2">
+				<div class="px-1" style="display:inline-block">
+					<div class="dot green column"></div>&nbsp;<span>{{ctrl.passCount}}</span></div>
+				<div class="px-1" style="display:inline-block">
+					<div class="dot orange column"></div>&nbsp;<span>{{ctrl.skipCount}}</span></div>
+				<div class="px-1" style="display:inline-block">
+					<div class="dot red column"></div>&nbsp;<span>{{ctrl.failCount}}</span></div>
+			</div>
+			<div class="bar-graph px-1 pt-1 pb-1" ng-if="ctrl.totalCount>0">
+				<table style="height:4px" cell-spacing="6">
+					<tr>
+						<td class="green" style="width:{{ctrl.passCount*100/ctrl.totalCount}}%;border-radius:2px"></td>
+						<td class="orange" style="width:{{ctrl.skipCount*100/ctrl.totalCount}}%;border-radius:2px"></td>
+						<td class="red" style="width:{{ctrl.failCount*100/ctrl.totalCount}}%;border-radius:2px"></td>
+					</tr>
+				</table>
+			</div>
+		</div>
+		<input class="form-control form-control-dark w-100" type="text" placeholder="Search" aria-label="Search">
+		<ul class="navbar-nav px-3">
+			<li class="nav-item text-nowrap">
+				<a class="nav-link" href="#"></a>
+			</li>
+		</ul>
+	</nav>
+
+	<div class="container-fluid">
+		<div class="row justify-content-between">
+			<nav class="col-md-2 ml-sm-auto bg-light px-0 column">
+				<div class="sidebar-sticky">
+					<div ng-if="!ctrl.featuresLoading">
+						<div class="white-box" ng-repeat="feature in ctrl.features" ng-class="{	'selected-green': ctrl.activeFeature==feature && feature.status=='passed',
+																								'selected-orange': ctrl.activeFeature==feature && feature.status=='skipped',
+																								'selected-red': ctrl.activeFeature==feature && feature.status=='failed',
+																								'text-green text-green': feature.status=='passed',
+																								'text-orange text-orange': feature.status=='skipped',
+																								'text-red text-red': feature.status=='failed'
+																								}" ng-click="ctrl.featureChanged(feature)">
+							<ul class="nav flex-column mt-1 pt-1 pb-2">
+								<li class="nav-item">
+									<div title="{{feature.name}}" style="font-size:.85rem" class="" href="#">
+										<div class="overflow-ellipsis">
+											<span data-feather="layers"></span> &nbsp;&nbsp;{{feature.name}}
+										</div>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</div>
+					<div class="spinner pt-4 pb-4" ng-if="ctrl.featuresLoading">
+						<i style="font-size:24px" class="fa fa-spin">&#xf013;</i>
+					</div>
+				</div>
+			</nav>
+
+			<nav class="col-md-3 ml-sm-auto bg-light px-0 column">
+				<div class="sidebar-sticky">
+					<div ng-if="!ctrl.scenariosLoading">
+						<div class="white-box" ng-repeat="scenario in ctrl.scenarios" ng-click="ctrl.scenarioChanged(scenario)" ng-class="{'selected-green': ctrl.activeScenario==scenario && scenario.status=='passed',
+																																			'selected-orange': ctrl.activeScenario==scenario && scenario.status!='failed' && scenario.status!='passed',
+																																			'selected-red': ctrl.activeScenario==scenario && scenario.status=='failed',
+																																			'passed text-green':scenario.status=='passed',
+																																			'failed text-red':scenario.status=='failed',
+																																			'unknown text-orange':scenario.status!='failed' && scenario.status!='passed' }">
+							<ul class="nav flex-column mt-1 pt-1 pb-2">
+								<li class="nav-item">
+									<div title="{{scenario.name}}" href="#">
+										<div class="overflow-ellipsis" style="font-size:.85rem">
+											<span data-feather="file-text"></span> &nbsp;&nbsp;{{scenario.name}}
+										</div>
+
+									</div>
+								</li>
+							</ul>
+							<div title='{{scenario.metaData.referece}}' class="pl-2 pb-1 overflow-ellipsis text-blue">{{scenario.metaData.referece}}</div>
+						</div>
+					</div>
+					<div class="spinner pt-4 pb-4" ng-if="ctrl.scenariosLoading">
+						<i style="font-size:24px" class="fa fa-spin">&#xf013;</i>
+					</div>
+				</div>
+
+			</nav>
+
+
+			<nav class="col-md-7 ml-sm-auto px-0 column" style="-ms-flex:0 0 56.9%;flex:0 0 56.9%;max-width:56.9%;min-width:56.9%">
+				<div class="sidebar-sticky">
+					<div ng-if="!ctrl.stepsLoading">
+						<div class="keyword-blue bg-light" style="display:inline-block;align:left;font-size:.8rem;" ng-repeat="tag in ctrl.activeScenario.tags">{{tag}}&nbsp;</div>
+						<div class="white-box bg-light" style="font-size:1rem;font-weight:500">
+							<span class="keyword-purple">{{ctrl.activeScenario.keyword}} </span>
+							<span class="keyword-grey">{{ctrl.activeScenario.name}}</span>
+						</div>
+						<div class="row grey-box ml-4" ng-repeat="step in ctrl.steps" ng-class="{'selected-green':step==ctrl.activeStep && step.result.status=='passed',
+																									'selected-orange':step==ctrl.activeStep && step.result.status=='skipped',
+																									'selected-red':step==ctrl.activeStep && step.result.status=='failed',
+																									'passed':step.result.status=='passed',
+																									'failed':step.result.status=='failed',
+																									'unknown':step.result.status=='skipped'}" ng-click="ctrl.stepChanged(step)" style="display:block;-ms-flex:0 0 90%;flex:0 0 90%;max-width:90%">
+
+																									
+							<div class="step-message col-md-10 overflow-ellipsis" title="{{step.name}}" style="display:inline-block;font-size:0.8rem">
+								<span class="keyword-yellow">{{step.keyword}}</span>
+								<span class="keyword-grey">{{step.name}}</span>
+							</div>
+							<!-- <div class="step-dureation keyword-purple" style="display:inline-block;-ms-flex:0 0 20%;flex:0 0 20%;max-width:20%">{{ctrl.msToHMS(step.result.duration)}}</div>
+
+							<div ng-if="step.screenshot" ng-click="ctrl.toggleImageDisplay(step)" class="pic pt-1 pr-1" style="display:inline-block;float:right" ng-class="{
+																									'text-green':step.result=='success',
+																									'text-red':step.result=='fail',
+																									'text-orange':step.result=='Not Run'}">
+								<i class="fa fa-camera-retro" style="font-size:16px"></i>
+							</div> -->
+							<div ng-if="ctrl.activeStep.result.status=='failed' && step==ctrl.activeStep">
+								<div class="row ml-2 pl-3 keyword-red" style="font-size:0.7rem;font-weight:700;overflow-wrap: break-word;">{{ctrl.activeStep.result.error_message}}</div>
+								<!-- <div class="row ml-2 pl-4 pr-1 keyword-red" style="font-size:0.7rem;overflow-wrap: break-word;">{{ctrl.errorTrace}}</div> -->
+							</div>
+						</div>
+					</div>
+					<div class="spinner pt-4 pb-4" ng-if="ctrl.stepsLoading">
+						<i style="font-size:24px" class="fa fa-spin">&#xf013;</i>
+					</div>
+
+				</div>
+			</nav>
+
+			<!-- <nav class="ml-sm-auto bg-light column" style="-ms-flex:0 0 15.9%;flex:0 0 15.9%;max-width:15.9%;min-width:15.9%">
+				<div class="sidebar-sticky">
+					<div ng-if="!ctrl.commandsLoading">
+						<div class="row white-box unknown ml-0" ng-repeat="log in ctrl.activeStep.subLogs">
+							<div class="cpmmand-name overflow-ellipsis keyword-grey" style="font-size:.85rem" title="{{log.commandName}}">
+								<span data-feather="bar-chart-2"></span>&nbsp;&nbsp;{{log.commandName}}
+							</div>
+							<div class="command-arg overflow-ellipsis keyword-blue" ng-repeat="arg in log.args" title="{{arg}}">{{arg}}</div>
+						</div>
+					</div>
+					<div class="spinner pt-4 pb-4" ng-if="ctrl.commandsLoading">
+						<i style="font-size:24px" class="fa fa-spin">&#xf013;</i>
+					</div>
+				</div>
+			</nav> -->
+
+		</div>
+	</div>
+<!-- 
+	<div class="backdrop" ng-if="ctrl.displayImage" ng-click="ctrl.toggleImageDisplay()">
+		<img class="screnshot-img" ng-src="{{ctrl.imageURL}}" />
+	</div> -->
+
+
+
+	<!-- Bootstrap core JavaScript
+    ================================================== -->
+	<!-- Placed at the end of the document so the pages load faster -->
+
+	<script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+	<script>
+		feather.replace();
+    </script>
+
+</body>
+
+</html>
